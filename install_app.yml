@@ -1,0 +1,7 @@
+---
+- hosts: staging
+  tasks:
+    - name: create file
+      file:
+        path: /home/{{ ansible_user_id }}/test.txt
+        state: touch
