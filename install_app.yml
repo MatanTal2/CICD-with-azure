@@ -79,4 +79,16 @@
       args:
         chdir: /home/{{ ansible_user_id }}/myapp/
     
+      #  use the  npm to initialize the project’s package.json file.
+    - name: initiate npm on working folder
+      shell: npm init -y
+      args:
+        chdir: /home/{{ ansible_user_id }}/myapp/
+    
+    - name: initiate the database
+      command: "npm run initdb"
+      run_once: true
+      args:
+        chdir: /home/{{ ansible_user_id }}/myapp/
+
     
