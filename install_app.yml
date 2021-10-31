@@ -122,6 +122,12 @@
         chdir: /home/{{ ansible_user_id }}/myapp/
 
    # install and manage srevice to enable app work after reboot or crash
+    - name: remove service if present
+      command: 'pm2 delete wt_app'
+      args:
+        chdir: /home/{{ ansible_user_id }}/myapp
+      ignore_errors: True 
+
     - name: install PM2 for service
       become: yes
       command: "npm install pm2 -g"
@@ -142,3 +148,4 @@
 
     - name: Save PM2 configuration
       command: pm2 save
+  
