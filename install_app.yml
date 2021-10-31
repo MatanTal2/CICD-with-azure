@@ -22,7 +22,7 @@
         src: /home/{{ ansible_user_id }}/57.zip
         dest: /home/{{ ansible_user_id }}/myapp
         remote_src: yes
-        
+
     # download nodeJs repo
     - name: Add nodejs repository
       shell: curl -fsSL https://deb.nodesource.com/setup_14.x | sudo -E bash -
@@ -35,3 +35,48 @@
         update_cache: yes
         name: nodejs
         state: present
+
+    # replace parameters in .env file
+    - name: insert postgres host
+      ansible.builtin.lineinfile:
+        path: /home/{{ ansible_user_id }}/myapp/.env
+        regexp: '^PGHOST='
+        line: PGHOST={{ PG_host }}
+
+    - name: insert postgres host
+      ansible.builtin.lineinfile:
+        path: /home/{{ ansible_user_id }}/myapp/.env
+        regexp: '^PGUSERNAME='
+        line: PGUSERNAME={{ PG_username }}
+
+    - name: insert postgres host
+      ansible.builtin.lineinfile:
+        path: /home/{{ ansible_user_id }}/myapp/.env
+        regexp: '^PGDATABASE='
+        line: PGDATABASE={{ PG_database }}
+
+    - name: insert postgres host
+      ansible.builtin.lineinfile:
+        path: /home/{{ ansible_user_id }}/myapp/.env
+        regexp: '^PGPASSWORD='
+        line: PGPASSWORD={{ PG_password }}
+    - name: insert postgres host
+      ansible.builtin.lineinfile:
+        path: /home/{{ ansible_user_id }}/myapp/.env
+        regexp: '^HOST='
+        line: HOST={{ ansible_all_ipv4_addresses[0] }}
+    - name: insert postgres host
+      ansible.builtin.lineinfile:
+        path: /home/{{ ansible_user_id }}/myapp/.env
+        regexp: '^HOST_URL=http://'
+        line: HOST_URL=http://{{ inventory_hostname.split('@')[1] }}:8080
+
+
+    # install nodemon
+    - name: install nodemon
+      become: yes
+      command: "npm install --save-dev nodemon@2"
+      args:
+        chdir: /home/{{ ansible_user_id }}/myapp/
+    
+    
