@@ -19,15 +19,21 @@
     # unarchive the artifact from realase pipeline
     - name: Unarchive artifact
       ansible.builtin.unarchive:
-        src: /home/{{ ansible_user_id }}/57.zip
+        src: /home/{{ ansible_user_id }}/*.zip
         dest: /home/{{ ansible_user_id }}/myapp
         remote_src: yes
+    # delete the zip artifact
+    - name: Remove the zip file (delete file)
+      ansible.builtin.file:
+        path: /home/{{ ansible_user_id }}/*.zip
+        state: absent
 
     # download nodeJs repo
     - name: Add nodejs repository
       shell: curl -fsSL https://deb.nodesource.com/setup_14.x | sudo -E bash -
       args:
         warn: no
+
     # install nodeJS version 14
     - name: Install nodejs
       become: yes
@@ -36,6 +42,11 @@
         name: nodejs
         state: present
 
+    # install npm
+    - name: Install packages based on package.json.
+      npm:
+        path: /home/{{ ansible_user_id }}/myapp/
+    
     # replace parameters in .env file
     - name: insert postgres host
       ansible.builtin.lineinfile:
@@ -91,4 +102,24 @@
       args:
         chdir: /home/{{ ansible_user_id }}/myapp/
 
-    
+   
+    # - name: install PM2 for service
+    #   become: yes
+    #   command: "npm install pm2 -g"
+    #   args:
+    #     chdir: /home/{{ ansible_user_id }}/myapp/
+
+    # - name: pm2 run the app using npm run dev command
+    #   command: 'pm2 start "npm run dev" --name wt_app'
+    #   args:
+    #     chdir: /home/{{ ansible_user_id }}/myapp/
+
+    # - name: run pm2 to start the service 
+    #   become: true
+    #   command: 'pm2 startup systemd -u {{ ansible_user_id }} --hp /home/{{ ansible_user_id }}'
+    #   environment:
+    #     PATH: "{{ ansible_env.PATH }}"
+    #   ignore_errors: True
+
+    # - name: Save PM2 configuration
+    #   command: pm2 save
