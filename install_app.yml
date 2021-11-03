@@ -1,0 +1,151 @@
+---
+- hosts: "{{ hosts }}"
+  tasks:
+
+    #clean before started
+    - name: Delete content & directory
+      file:
+        state: absent
+        path: /home/{{ ansible_user_id }}/myapp
+
+    # create folder for the app
+    - name: Create a directory if it does not exist
+      ansible.builtin.file:
+        path: /home/{{ ansible_user_id }}/myapp
+        state: directory
+        mode: '0755'
+
+    # make sure unzip is install
+    - name: Update apt cache and make sure unzip is installed
+      become: true
+      apt:
+        name: unzip
+        update_cache: yes
+
+    # find the zip work around 
+    - name: find the zip file
+      ansible.builtin.find:
+        paths: /home/{{ ansible_user_id }}/
+        patterns: "*.zip"
+      register: file_loc
+
+    # unarchive the artifact from realase pipeline
+    - name: Unarchive artifact
+      ansible.builtin.unarchive:
+        src: "{{ item.path }}"
+        dest: /home/{{ ansible_user_id }}/myapp
+        remote_src: yes
+      with_items: "{{ file_loc.files }}"
+      register: remove_zip
+    
+    # delete the zip artifact
+    - name: remove_zip
+      ansible.builtin.file:
+        path: /home/{{ ansible_user_id }}/*.zip
+        state: absent
+      when: remove_zip.changed
+
+    # download nodeJs repo
+    - name: Add nodejs repository
+      shell: curl -fsSL https://deb.nodesource.com/setup_14.x | sudo -E bash -
+      args:
+        warn: no
+
+    # install nodeJS version 14
+    - name: Install nodejs
+      become: yes
+      apt:
+        update_cache: yes
+        name: nodejs
+        state: present
+
+    # install npm
+    - name: Install packages based on package.json.
+      npm:
+        path: /home/{{ ansible_user_id }}/myapp/
+    
+    # replace parameters in .env file
+    - name: insert postgres host
+      ansible.builtin.lineinfile:
+        path: /home/{{ ansible_user_id }}/myapp/.env
+        regexp: '^PGHOST='
+        line: PGHOST={{ PG_host }}
+
+    - name: insert postgres host
+      ansible.builtin.lineinfile:
+        path: /home/{{ ansible_user_id }}/myapp/.env
+        regexp: '^PGUSERNAME='
+        line: PGUSERNAME={{ PG_username }}
+
+    - name: insert postgres host
+      ansible.builtin.lineinfile:
+        path: /home/{{ ansible_user_id }}/myapp/.env
+        regexp: '^PGDATABASE='
+        line: PGDATABASE={{ PG_database }}
+
+    - name: insert postgres host
+      ansible.builtin.lineinfile:
+        path: /home/{{ ansible_user_id }}/myapp/.env
+        regexp: '^PGPASSWORD='
+        line: PGPASSWORD={{ PG_password }}
+
+    - name: insert postgres host
+      ansible.builtin.lineinfile:
+        path: /home/{{ ansible_user_id }}/myapp/.env
+        regexp: '^HOST='
+        line: HOST={{ ansible_all_ipv4_addresses[0] }}
+        
+    - name: insert postgres host
+      ansible.builtin.lineinfile:
+        path: /home/{{ ansible_user_id }}/myapp/.env
+        regexp: '^HOST_URL=http://'
+        line: HOST_URL=http://{{ LB_IP }}
+
+
+    # install nodemon
+    - name: install nodemon
+      become: yes
+      command: "npm install --save-dev nodemon@2"
+      args:
+        chdir: /home/{{ ansible_user_id }}/myapp/
+    
+      #  use the  npm to initialize the project’s package.json file.
+    - name: initiate npm on working folder
+      shell: npm init -y
+      args:
+        chdir: /home/{{ ansible_user_id }}/myapp/
+    
+    - name: initiate the database
+      command: "npm run initdb"
+      run_once: true
+      args:
+        chdir: /home/{{ ansible_user_id }}/myapp/
+
+   # install and manage srevice to enable app work after reboot or crash
+    - name: remove service if present
+      command: 'pm2 delete wt_app'
+      args:
+        chdir: /home/{{ ansible_user_id }}/myapp
+      ignore_errors: True 
+
+    - name: install PM2 for service
+      become: yes
+      command: "npm install pm2 -g"
+      args:
+        chdir: /home/{{ ansible_user_id }}/myapp/
+
+    - name: pm2 run the app using npm run dev command
+      command: 'pm2 start "npm run dev" --name wt_app'
+      args:
+        chdir: /home/{{ ansible_user_id }}/myapp/
+
+    - name: run pm2 to start the service 
+      become: true
+      command: 'pm2 startup systemd -u {{ ansible_user_id }} --hp /home/{{ ansible_user_id }}'
+      environment:
+        PATH: "{{ ansible_env.PATH }}"
+      ignore_errors: True
+
+    - name: Save PM2 configuration
+      command: pm2 save
+  
